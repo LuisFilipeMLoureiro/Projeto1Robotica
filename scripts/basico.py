@@ -36,7 +36,7 @@ centro = []
 atraso = 1.5E9 # 1 segundo e meio. Em nanossegundos
 
 
-area = 0.0 # Variavel com a area do maior contorno
+maior_area = 0.0 # Variavel com a area do maior contorno
 
 # Só usar se os relógios ROS da Raspberry e do Linux desktop estiverem sincronizados. 
 # Descarta imagens que chegam atrasadas demais
@@ -53,7 +53,7 @@ yinter=0
 frame = "camera_link"
 # frame = "head_camera"  # DESCOMENTE para usar com webcam USB via roslaunch tag_tracking usbcam
 
-tfl = 0
+#tfl = 0
 
 tf_buffer = tf2_ros.Buffer()
 
@@ -108,14 +108,16 @@ def linha(frame):
     
     # kernel= np.array([[0,-1,0],[-1,5,-1],[0,-1,0]])
     kernel= np.array([[-1,-1,-1],[-1,9,-1],[-1,-1,-1]])
-    #sharp=cv2.filter2D(gray,-1,kernel) deixar uma parte de visao preta
-    sharp[:-260,:]=0
+    sharp=cv2.filter2D(gray,-1,kernel) 
+    #kernel= np.array([[-1,0,1],[-2,0,2],[-1,0,1]])
+    #sharp=cv2.filter2D(sharp,-1,kernel)
+    sharp[:-200,:]=0 #deixar uma parte de visao preta
 
     edges = cv2.Canny(sharp,50,150,apertureSize = 3) 
 
     debug_img = sharp.copy()
 
-    lines = cv2.HoughLines(edges,1,np.pi/180, 200) #mudar a sensibilidade para 100 
+    lines = cv2.HoughLines(edges,1,np.pi/180, 45) #mudar a sensibilidade para 100 
 
     linha_achada1=False  
     linha_achada=False       
@@ -139,13 +141,13 @@ def linha(frame):
             y2 = int(y0 - 1000*(a)) 
             if (x2-x1)!=0:
                 coef1=(y2-y1)/(x2-x1)
-            if coef1 < -0.25 and coef1 > -3:
+            if coef1 < -0.86 and coef1 > -10:
                 if linha_achada1==False:
                     linha_achada1=True
                     m1=coef1
                     h1=(y1-coef1*x1)
                     cv2.line(frame,(x1,y1), (x2,y2), (0,0,255),2)
-            elif coef1 > 0.25 and coef1<3:
+            elif coef1 > 0.86 and coef1<10:
                 if linha_achada==False:
                     linha_achada=True
                     m2=coef1
@@ -173,6 +175,7 @@ def roda_todo_frame(imagem):
     global media
     global centro
     global resultados
+    global maior_area
 
     now = rospy.get_rostime()
     imgtime = imagem.header.stamp
@@ -187,7 +190,8 @@ def roda_todo_frame(imagem):
         temp_image = bridge.compressed_imgmsg_to_cv2(imagem, "bgr8")
         # Note que os resultados já são guardados automaticamente na variável
         # chamada resultados
-        centro, saida_net, resultados =  visao_module.processa(temp_image)        
+        centro, saida_net, resultados =  visao_module.processa(temp_image)  
+        #media, centro, maior_area =  cormodule.identifica_cor(cv_image)      
         for r in resultados:
             # print(r) - print feito para documentar e entender
             # o resultado            
@@ -203,7 +207,7 @@ def roda_todo_frame(imagem):
 if __name__=="__main__":
     rospy.init_node("cor")
 
-    topico_imagem = "/raspicam/rgb/image_raw/compressed"
+    topico_imagem = "/camera/rgb/image_raw/compressed"
 
     recebedor = rospy.Subscriber(topico_imagem, CompressedImage, roda_todo_frame, queue_size=4, buff_size = 2**24)
     recebedor = rospy.Subscriber("/ar_pose_marker", AlvarMarkers, recebe) # Para recebermos notificacoes de que marcadores foram vistos
@@ -239,11 +243,11 @@ if __name__=="__main__":
                     cv2.imshow("DEBUG", debug_img)
 
                 if xinter>centro[0]:
-                    vel = Twist(Vector3(0.3,0,0), Vector3(0,0,-0.05))
+                    vel = Twist(Vector3(0.7,0,0), Vector3(0,0,-0.05))
                     velocidade_saida.publish(vel)
         
                 elif xinter<centro[0]:
-                    vel = Twist(Vector3(0.3,0,0), Vector3(0,0,0.05))
+                    vel = Twist(Vector3(0.7,0,0), Vector3(0,0,0.05))
                     velocidade_saida.publish(vel)
                 elif xinter<=0 or yinter<= 0:
                     vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
