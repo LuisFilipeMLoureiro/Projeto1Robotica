@@ -103,21 +103,30 @@ def linha(frame):
     global debug_img
     
     # frame=cv_image #CV IMAGE TELA PRETA
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     
     # kernel= np.array([[0,-1,0],[-1,5,-1],[0,-1,0]])
+    
     kernel= np.array([[-1,-1,-1],[-1,9,-1],[-1,-1,-1]])
     sharp=cv2.filter2D(gray,-1,kernel) 
     #kernel= np.array([[-1,0,1],[-2,0,2],[-1,0,1]])
     #sharp=cv2.filter2D(sharp,-1,kernel)
-    sharp[:-200,:]=0 #deixar uma parte de visao preta
+    #sharp[:-200,:]=0 deixar uma parte de visao preta
+    
+    cor_menor = np.array([20, 205, 205]) 
+    cor_maior = np.array([35, 255, 255]) 
+
+    #cor_menor = np.array([0, 0, 240]) BLANCO
+    #cor_maior = np.array([25, 25, 255]) BLANCO
+
+    sharp= cv2.inRange(sharp, cor_menor, cor_maior)
 
     edges = cv2.Canny(sharp,50,150,apertureSize = 3) 
 
     debug_img = sharp.copy()
 
-    lines = cv2.HoughLines(edges,1,np.pi/180, 45) #mudar a sensibilidade para 100 
+    lines = cv2.HoughLines(edges,1,np.pi/180, 10) #mudar a sensibilidade para 100 
 
     linha_achada1=False  
     linha_achada=False       
@@ -141,26 +150,26 @@ def linha(frame):
             y2 = int(y0 - 1000*(a)) 
             if (x2-x1)!=0:
                 coef1=(y2-y1)/(x2-x1)
-            if coef1 < -0.86 and coef1 > -10:
-                if linha_achada1==False:
-                    linha_achada1=True
-                    m1=coef1
-                    h1=(y1-coef1*x1)
-                    cv2.line(frame,(x1,y1), (x2,y2), (0,0,255),2)
-            elif coef1 > 0.86 and coef1<10:
-                if linha_achada==False:
-                    linha_achada=True
-                    m2=coef1
-                    h2=(y1-coef1*x1)
-                    cv2.line(frame,(x1,y1), (x2,y2), (0,0,255),2)
-            
-            if (m1-m2)!=0:                    
-                xinter=int((h2-h1)/(m1-m2))
-            yinter=int(m1*xinter + h1) 
-            cv2.circle(frame,(xinter,yinter), 10, (0,255,0), -1)
+                if coef1 < -0.86 and coef1 > -10:
+                    if linha_achada1==False:
+                        linha_achada1=True
+                        m1=coef1
+                        h1=(y1-coef1*x1)
+                        cv2.line(frame,(x1,y1), (x2,y2), (0,0,255),2)
+                elif coef1 > 0.86 and coef1<10:
+                    if linha_achada==False:
+                        linha_achada=True
+                        m2=coef1
+                        h2=(y1-coef1*x1)
+                        cv2.line(frame,(x1,y1), (x2,y2), (0,0,255),2)
+                
+                if (m1-m2)!=0:                    
+                    xinter=int((h2-h1)/(m1-m2))
+                yinter=int(m1*xinter + h1) 
+                cv2.circle(frame,(xinter,yinter), 10, (0,255,0), -1)
 
 
-            print("XINTER {0}".format((xinter,yinter)))
+                print("XINTER {0}".format((xinter,yinter)))
             
             #cv2.imshow('linhas',frame)
     return frame, (xinter,yinter)
@@ -191,7 +200,8 @@ def roda_todo_frame(imagem):
         # Note que os resultados já são guardados automaticamente na variável
         # chamada resultados
         centro, saida_net, resultados =  visao_module.processa(temp_image)  
-        #media, centro, maior_area =  cormodule.identifica_cor(cv_image)      
+        #results =  visao_module.identifica_cor(cv_image)      
+       
         for r in resultados:
             # print(r) - print feito para documentar e entender
             # o resultado            
@@ -236,18 +246,18 @@ if __name__=="__main__":
 
             if cv_image is not None:
                 # Note que o imshow precisa ficar *ou* no codigo de tratamento de eventos *ou* no thread principal, não em ambos
-                #cv2.imshow("cv_image no loop principal", cv_image)
+                
                 imagem, pontointer= linha(cv_image)
                 cv2.imshow("Linha", imagem)
                 if debug_img is not None:
                     cv2.imshow("DEBUG", debug_img)
 
                 if xinter>centro[0]:
-                    vel = Twist(Vector3(0.7,0,0), Vector3(0,0,-0.05))
+                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.09))
                     velocidade_saida.publish(vel)
         
                 elif xinter<centro[0]:
-                    vel = Twist(Vector3(0.7,0,0), Vector3(0,0,0.05))
+                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.09))
                     velocidade_saida.publish(vel)
                 elif xinter<=0 or yinter<= 0:
                     vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
