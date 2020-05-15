@@ -48,13 +48,27 @@ def identifica_cor(frame):
     # do vermelho:
     frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    cor_menor = np.array([0, 50, 50])
-    cor_maior = np.array([8, 255, 255])
+
+
+    lista=("verde", 12, "dog")
+
+    if lista[0]== "azul":
+        cor_menor = np.array([100,30, 50])
+        cor_maior = np.array([110, 255, 255])
+    
+    if lista[0]== "rosa":
+        cor_menor = np.array([145,30, 50])
+        cor_maior = np.array([155, 255, 255])
+    if lista[0]== "verde":
+        cor_menor = np.array([55,30, 150])
+        cor_maior = np.array([65, 255, 255])
+
+    
     segmentado_cor = cv2.inRange(frame_hsv, cor_menor, cor_maior)
 
-    cor_menor = np.array([172, 50, 50])
-    cor_maior = np.array([180, 255, 255])
-    segmentado_cor += cv2.inRange(frame_hsv, cor_menor, cor_maior)
+    #cor_menor = np.array([172, 50, 50])
+    #cor_maior = np.array([180, 255, 255])
+    #segmentado_cor += cv2.inRange(frame_hsv, cor_menor, cor_maior)
 
     # Note que a notacão do numpy encara as imagens como matriz, portanto o enderecamento é
     # linha, coluna ou (y,x)
@@ -63,8 +77,8 @@ def identifica_cor(frame):
 
 
     def cross(img_rgb, point, color, width,length):
-        cv2.line(img_rgb, (point[0] - length/2, point[1]),  (point[0] + length/2, point[1]), color ,width, length)
-        cv2.line(img_rgb, (point[0], point[1] - length/2), (point[0], point[1] + length/2),color ,width, length)
+        cv2.line(img_rgb, (point[0] - length//2, point[1]),  (point[0] + length//2, point[1]), color ,width, length)
+        cv2.line(img_rgb, (point[0], point[1] - length//2), (point[0], point[1] + length//2),color ,width, length)
 
 
 
@@ -74,8 +88,8 @@ def identifica_cor(frame):
     segmentado_cor = cv2.morphologyEx(segmentado_cor,cv2.MORPH_CLOSE,np.ones((7, 7)))
 
     # Encontramos os contornos na máscara e selecionamos o de maior área
-    #contornos, arvore = cv2.findContours(segmentado_cor.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    img_out, contornos, arvore = cv2.findContours(segmentado_cor.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contornos, arvore = cv2.findContours(segmentado_cor.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    #img_out, contornos, arvore = cv2.findContours(segmentado_cor.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     maior_contorno = None
     maior_contorno_area = 0
@@ -102,4 +116,4 @@ def identifica_cor(frame):
     cv2.putText(frame,"{:d} {:d}".format(*media),(20,100), 1, 4,(255,255,255),2,cv2.LINE_AA)
     cv2.putText(frame,"{:0.1f}".format(maior_contorno_area),(20,50), 1, 4,(255,255,255),2,cv2.LINE_AA)
 
-    return centro, result_frame, result_tuples
+    return media, centro, maior_contorno_area, frame

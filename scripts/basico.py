@@ -20,11 +20,15 @@ from geometry_msgs.msg import Twist, Vector3, Pose, Vector3Stamped
 from ar_track_alvar_msgs.msg import AlvarMarker, AlvarMarkers
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Header
+from sensor_msgs.msg import LaserScan
 
 
 import visao_module
 
 
+global ESTADO
+
+ESTADO = "INICIAL"
 bridge = CvBridge()
 
 cv_image = None
@@ -56,6 +60,10 @@ frame = "camera_link"
 #tfl = 0
 
 tf_buffer = tf2_ros.Buffer()
+
+def scaneou(dado):
+	global distancia
+	distancia=dado.ranges[0]
 
 
 def recebe(msg):
@@ -114,6 +122,8 @@ def linha(frame):
     #sharp=cv2.filter2D(sharp,-1,kernel)
     #sharp[:-200,:]=0 deixar uma parte de visao preta
     
+
+    
     cor_menor = np.array([20, 205, 205]) 
     cor_maior = np.array([35, 255, 255]) 
 
@@ -169,7 +179,7 @@ def linha(frame):
                 cv2.circle(frame,(xinter,yinter), 10, (0,255,0), -1)
 
 
-                print("XINTER {0}".format((xinter,yinter)))
+                #print("XINTER {0}".format((xinter,yinter)))
             
             #cv2.imshow('linhas',frame)
     return frame, (xinter,yinter)
@@ -185,6 +195,9 @@ def roda_todo_frame(imagem):
     global centro
     global resultados
     global maior_area
+    global central
+    global mostra_visao
+    
 
     now = rospy.get_rostime()
     imgtime = imagem.header.stamp
@@ -200,6 +213,11 @@ def roda_todo_frame(imagem):
         # Note que os resultados já são guardados automaticamente na variável
         # chamada resultados
         centro, saida_net, resultados =  visao_module.processa(temp_image)  
+        media, central, maior_area, mostra_visao =  visao_module.identifica_cor(temp_image)
+        print("IDENTIFICA {0} {1}".format(maior_area, central))
+
+        
+
         #results =  visao_module.identifica_cor(cv_image)      
        
         for r in resultados:
@@ -208,12 +226,12 @@ def roda_todo_frame(imagem):
             pass
 
         depois = time.clock()
-        print("CENTRO {0}".format(centro))
+        #print("CENTRO {0}".format(centro))
         # Desnecessário - Hough e MobileNet já abrem janelas
         cv_image = saida_net.copy()
     except CvBridgeError as e:
         print('ex', e)
-    
+ 
 if __name__=="__main__":
     rospy.init_node("cor")
 
@@ -221,7 +239,7 @@ if __name__=="__main__":
 
     recebedor = rospy.Subscriber(topico_imagem, CompressedImage, roda_todo_frame, queue_size=4, buff_size = 2**24)
     recebedor = rospy.Subscriber("/ar_pose_marker", AlvarMarkers, recebe) # Para recebermos notificacoes de que marcadores foram vistos
-
+    recebe_scan = rospy.Subscriber("/scan", LaserScan, scaneou)
 
     print("Usando ", topico_imagem)
 
@@ -241,29 +259,50 @@ if __name__=="__main__":
         while not rospy.is_shutdown():
             for r in resultados:
                 print(r)
+
+        
             #velocidade_saida.publish(vel)
 
 
             if cv_image is not None:
                 # Note que o imshow precisa ficar *ou* no codigo de tratamento de eventos *ou* no thread principal, não em ambos
-                
+                cv2.imshow("Filtro cor", mostra_visao)
+                cv2.waitKey(1)
                 imagem, pontointer= linha(cv_image)
                 cv2.imshow("Linha", imagem)
-                if debug_img is not None:
-                    cv2.imshow("DEBUG", debug_img)
-
-                if xinter>centro[0]:
-                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.09))
-                    velocidade_saida.publish(vel)
-        
-                elif xinter<centro[0]:
-                    vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.09))
-                    velocidade_saida.publish(vel)
-                elif xinter<=0 or yinter<= 0:
-                    vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
-                    velocidade_saida.publish(vel)
-
                 
+
+                if ESTADO=="INICIAL":
+                    if xinter>centro[0]:
+                        vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.09))
+                        velocidade_saida.publish(vel)
+            
+                    elif xinter<centro[0]:
+                        vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.09))
+                        velocidade_saida.publish(vel)
+                    elif xinter<=0 or yinter<= 0:
+                        vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
+                        velocidade_saida.publish(vel)
+
+                if maior_area > 500 and len(media) != 0 and len(central)!=0:
+                    ESTADO="ACHOU CREEPER"
+                
+                if ESTADO== "ACHOU CREEPER":
+                    if media[0]>central[0]:
+                        vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.09))
+                        velocidade_saida.publish(vel)
+
+                    elif media[0]<central[0]:
+                        vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.09))
+                        velocidade_saida.publish(vel) 
+
+                if distancia <= 0.3:
+                    ESTADO= "FRENTE" 
+
+                if ESTADO== "FRENTE":
+                        vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
+                        velocidade_saida.publish(vel) 
+
                 
                 
                 cv2.waitKey(1)
