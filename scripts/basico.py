@@ -61,6 +61,62 @@ frame = "camera_link"
 
 tf_buffer = tf2_ros.Buffer()
 
+
+
+
+xondon = None
+yondon = None
+
+contador = 0
+pula = 100
+
+# Adicionado do gabarito P1
+alfa = -1
+max_linear = 0.2 
+
+max_angular = math.pi/8
+
+
+def recebe_odometria(data):
+    global xondon
+    global yondon
+    global alfa
+    global contador
+
+    xondon = data.pose.pose.position.x
+    yondon = data.pose.pose.position.y
+
+    quat = data.pose.pose.orientation
+    lista = [quat.x, quat.y, quat.z, quat.w]
+    angulos_rad = transformations.euler_from_quaternion(lista)
+    angulos = np.degrees(angulos_rad)    
+
+    alfa = angulos_rad[2] # mais facil se guardarmos alfa em radianos
+
+    print("Posicao (x,y)  ({:.2f} , {:.2f}) + angulo {:.2f}".format(xondon, yondon,angulos[2]))
+
+
+max_linear = 0.2 
+
+max_angular = math.pi/8
+
+def calcula_angulo(alfa, x, y):
+    beta = math.atan((y/ x))
+    angulo_total = beta + math.pi - alfa 
+    return angulo_total
+
+
+def calcula_dist(x, y):
+    hipotenusa = math.sqrt(pow(x,2) + pow(y,2))
+    return hipotenusa
+
+
+
+
+
+
+
+
 def scaneou(dado):
 	global distancia
 	distancia=dado.ranges[0]
@@ -214,7 +270,7 @@ def roda_todo_frame(imagem):
         # chamada resultados
         centro, saida_net, resultados =  visao_module.processa(temp_image)  
         media, central, maior_area, mostra_visao =  visao_module.identifica_cor(temp_image)
-        print("IDENTIFICA {0} {1}".format(maior_area, central))
+        #print("IDENTIFICA {0} {1}".format(maior_area, central))
 
         
 
@@ -240,6 +296,7 @@ if __name__=="__main__":
     recebedor = rospy.Subscriber(topico_imagem, CompressedImage, roda_todo_frame, queue_size=4, buff_size = 2**24)
     recebedor = rospy.Subscriber("/ar_pose_marker", AlvarMarkers, recebe) # Para recebermos notificacoes de que marcadores foram vistos
     recebe_scan = rospy.Subscriber("/scan", LaserScan, scaneou)
+    ref_odometria = rospy.Subscriber("/odom", Odometry, recebe_odometria)
 
     print("Usando ", topico_imagem)
 
@@ -267,9 +324,10 @@ if __name__=="__main__":
             if cv_image is not None:
                 # Note que o imshow precisa ficar *ou* no codigo de tratamento de eventos *ou* no thread principal, não em ambos
                 cv2.imshow("Filtro cor", mostra_visao)
-                cv2.waitKey(1)
                 imagem, pontointer= linha(cv_image)
                 cv2.imshow("Linha", imagem)
+                cv2.waitKey(1)
+
                 
 
                 if ESTADO=="INICIAL":
@@ -283,11 +341,13 @@ if __name__=="__main__":
                     elif xinter<=0 or yinter<= 0:
                         vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
                         velocidade_saida.publish(vel)
+                    print(ESTADO)
 
                 if maior_area > 500 and len(media) != 0 and len(central)!=0:
                     ESTADO="ACHOU CREEPER"
+                    print(ESTADO)
                 
-                if ESTADO== "ACHOU CREEPER":
+                if ESTADO == "ACHOU CREEPER":
                     if media[0]>central[0]:
                         vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.09))
                         velocidade_saida.publish(vel)
@@ -298,10 +358,33 @@ if __name__=="__main__":
 
                 if distancia <= 0.3:
                     ESTADO= "FRENTE" 
+                    print(ESTADO)
 
-                if ESTADO== "FRENTE":
-                        vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
-                        velocidade_saida.publish(vel) 
+                if ESTADO == "FRENTE":
+    
+                    print("Retonando a base de ",xondon, ",", yondon,", ", math.degrees(alfa))
+                    print("VOLTANDO PARA A PISTA")
+                    ang = calcula_angulo(alfa, xondon, yondon)
+                    dist = calcula_dist(xondon,yondon)
+                    vel_rot = Twist(Vector3(0,0,0), Vector3(0,0,max_angular))
+                    vel_trans = Twist(Vector3(max_linear,0,0), Vector3(0,0,0))
+                    zero = Twist(Vector3(0,0,0), Vector3(0,0,0))
+                    
+
+                    sleep_rot = abs(ang/max_angular)
+                    sleep_trans = abs(dist/max_linear)
+
+                    print(vel_rot, "\n",  sleep_rot)
+                    velocidade_saida.publish(vel_rot)
+                    rospy.sleep(sleep_rot) # congelou aqui
+
+                    print(vel_trans ,"\n", sleep_trans)
+                    velocidade_saida.publish(vel_trans)
+                    rospy.sleep(sleep_trans) # congelou aqui
+                    print("Terminou um ciclo")
+                    velocidade_saida.publish(zero)
+                    
+                        
 
                 
                 

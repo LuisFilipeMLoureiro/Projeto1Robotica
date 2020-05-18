@@ -50,7 +50,7 @@ def identifica_cor(frame):
 
 
 
-    lista=("verde", 12, "dog")
+    lista=("azul", 12, "dog")
 
     if lista[0]== "azul":
         cor_menor = np.array([100,30, 50])
