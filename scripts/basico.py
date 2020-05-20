@@ -32,7 +32,7 @@ ESTADO = "INICIAL"
 bridge = CvBridge()
 
 cv_image = None
-
+no_lines= False
 debug_img = None
 
 media = []
@@ -101,6 +101,7 @@ max_linear = 0.2
 max_angular = math.pi/8
 
 def calcula_angulo(alfa, x, y):
+
     beta = math.atan((y/ x))
     angulo_total = beta + math.pi - alfa 
     return angulo_total
@@ -165,7 +166,7 @@ def linha(frame):
     global xinter
     global yinter
     global debug_img
-    
+    global no_lines
     # frame=cv_image #CV IMAGE TELA PRETA
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
@@ -202,7 +203,10 @@ def linha(frame):
     h2=0
 
     if lines is None:
+        no_lines = True
         return frame, (-1,-1)
+    else:
+        no_lines = False
 
     for linha in lines: #usamos como referencia: https://www.geeksforgeeks.org/line-detection-python-opencv-houghline-method/
         for r,theta in linha: 
@@ -326,11 +330,17 @@ if __name__=="__main__":
                 cv2.imshow("Filtro cor", mostra_visao)
                 imagem, pontointer= linha(cv_image)
                 cv2.imshow("Linha", imagem)
+                #cv2.imshow("Debug", debug_img)
                 cv2.waitKey(1)
 
-                
+                if ESTADO == "INICIAL" and no_lines == True:
+                    vel = Twist(Vector3(0,0,0), Vector3(0,0,-0.09))
+                    velocidade_saida.publish(vel)
+                    print(xinter, yinter)
+                    
 
-                if ESTADO=="INICIAL":
+
+                if ESTADO=="INICIAL" and no_lines == False:
                     if xinter>centro[0]:
                         vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.09))
                         velocidade_saida.publish(vel)
@@ -342,6 +352,8 @@ if __name__=="__main__":
                         vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
                         velocidade_saida.publish(vel)
                     print(ESTADO)
+                    print(xinter, yinter)
+                
 
                 if maior_area > 500 and len(media) != 0 and len(central)!=0 and estado_volta == False:
                     ESTADO="ACHOU CREEPER"
@@ -349,20 +361,21 @@ if __name__=="__main__":
                 
                 if ESTADO == "ACHOU CREEPER":
                     if media[0]>central[0]:
-                        vel = Twist(Vector3(0.3,0,0), Vector3(0,0,-0.09))
+                        vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.09))
                         velocidade_saida.publish(vel)
 
                     elif media[0]<central[0]:
-                        vel = Twist(Vector3(0.3,0,0), Vector3(0,0,0.09))
+                        vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.09))
                         velocidade_saida.publish(vel) 
 
-                if distancia <= 0.3:
-                    ESTADO= "FRENTE" 
+                if distancia <= 0.3 and estado_volta == False:
+                    ESTADO= "INICIAL" 
+                    vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
+                    velocidade_saida.publish(vel) 
                     print(ESTADO)
-                    print("ENTROU NO ESTADO FRENTEEEEEE")
                     estado_volta=True
 
-                if ESTADO == "FRENTE":
+                if ESTADO == "FRENTE1":
     
                     print("Retonando a base de ",xondon, ",", yondon,", ", math.degrees(alfa))
                     print("VOLTANDO PARA A PISTA")
