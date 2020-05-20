@@ -38,7 +38,7 @@ debug_img = None
 media = []
 centro = []
 atraso = 1.5E9 # 1 segundo e meio. Em nanossegundos
-
+estado_volta = False
 
 maior_area = 0.0 # Variavel com a area do maior contorno
 
@@ -343,22 +343,24 @@ if __name__=="__main__":
                         velocidade_saida.publish(vel)
                     print(ESTADO)
 
-                if maior_area > 500 and len(media) != 0 and len(central)!=0:
+                if maior_area > 500 and len(media) != 0 and len(central)!=0 and estado_volta == False:
                     ESTADO="ACHOU CREEPER"
                     print(ESTADO)
                 
                 if ESTADO == "ACHOU CREEPER":
                     if media[0]>central[0]:
-                        vel = Twist(Vector3(0.2,0,0), Vector3(0,0,-0.09))
+                        vel = Twist(Vector3(0.3,0,0), Vector3(0,0,-0.09))
                         velocidade_saida.publish(vel)
 
                     elif media[0]<central[0]:
-                        vel = Twist(Vector3(0.2,0,0), Vector3(0,0,0.09))
+                        vel = Twist(Vector3(0.3,0,0), Vector3(0,0,0.09))
                         velocidade_saida.publish(vel) 
 
                 if distancia <= 0.3:
                     ESTADO= "FRENTE" 
                     print(ESTADO)
+                    print("ENTROU NO ESTADO FRENTEEEEEE")
+                    estado_volta=True
 
                 if ESTADO == "FRENTE":
     
@@ -377,10 +379,11 @@ if __name__=="__main__":
                     print(vel_rot, "\n",  sleep_rot)
                     velocidade_saida.publish(vel_rot)
                     rospy.sleep(sleep_rot) # congelou aqui
-
+                    #rospy.sleep(0.6)
                     print(vel_trans ,"\n", sleep_trans)
                     velocidade_saida.publish(vel_trans)
                     rospy.sleep(sleep_trans) # congelou aqui
+                    #rospy.sleep(0.6)
                     print("Terminou um ciclo")
                     velocidade_saida.publish(zero)
                     
