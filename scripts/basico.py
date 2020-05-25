@@ -21,20 +21,23 @@ from ar_track_alvar_msgs.msg import AlvarMarker, AlvarMarkers
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Header
 from sensor_msgs.msg import LaserScan
-
+import lista
 
 import visao_module
 
-
+lista1 = lista.retorna_lista()
 global ESTADO
-
+global creeper
+creeper = False
 ESTADO = "INICIAL"
 bridge = CvBridge()
-
+view_base = False
 cv_image = None
 no_lines= False
 debug_img = None
 
+
+base = False
 media = []
 centro = []
 atraso = 1.5E9 # 1 segundo e meio. Em nanossegundos
@@ -93,7 +96,7 @@ def recebe_odometria(data):
 
     alfa = angulos_rad[2] # mais facil se guardarmos alfa em radianos
 
-    print("Posicao (x,y)  ({:.2f} , {:.2f}) + angulo {:.2f}".format(xondon, yondon,angulos[2]))
+    #print("Posicao (x,y)  ({:.2f} , {:.2f}) + angulo {:.2f}".format(xondon, yondon,angulos[2]))
 
 
 max_linear = 0.2 
@@ -159,7 +162,7 @@ def recebe(msg):
 		angulo_marcador_robo = math.degrees(math.acos(cosa))
 
 		# Terminamos
-		print("id: {} x {} y {} z {} angulo {} ".format(id, x,y,z, angulo_marcador_robo))
+		#print("id: {} x {} y {} z {} angulo {} ".format(id, x,y,z, angulo_marcador_robo))
 
 
 def linha(frame):
@@ -205,6 +208,9 @@ def linha(frame):
     if lines is None:
         no_lines = True
         return frame, (-1,-1)
+    if len(lines)<1:
+        no_lines = True
+        
     else:
         no_lines = False
 
@@ -246,10 +252,9 @@ def linha(frame):
 
 
 
-
 # A função a seguir é chamada sempre que chega um novo frame
 def roda_todo_frame(imagem):
-    print("frame")
+    #print("frame")
     global cv_image
     global media
     global centro
@@ -281,7 +286,7 @@ def roda_todo_frame(imagem):
         #results =  visao_module.identifica_cor(cv_image)      
        
         for r in resultados:
-            # print(r) - print feito para documentar e entender
+            #print(r) - print feito para documentar e entender
             # o resultado            
             pass
 
@@ -319,7 +324,17 @@ if __name__=="__main__":
         
         while not rospy.is_shutdown():
             for r in resultados:
-                print(r)
+                objeto = "False"
+                if r[0] == lista1[2]:
+                    xcross = (r[2][0]+r[3][0])/2
+                    ycross = (r[2][1]+r[3][1])/2
+                    view_base = True
+                    objeto = r[0]
+                print(objeto)
+                print("LISTA  {0}".format(lista1[2]))
+                
+        
+                
 
         
             #velocidade_saida.publish(vel)
@@ -333,10 +348,10 @@ if __name__=="__main__":
                 #cv2.imshow("Debug", debug_img)
                 cv2.waitKey(1)
 
-                if ESTADO == "INICIAL" and no_lines == True:
+                if ESTADO == "INICIAL"  and no_lines == True:
                     vel = Twist(Vector3(0,0,0), Vector3(0,0,-0.09))
                     velocidade_saida.publish(vel)
-                    print(xinter, yinter)
+                    #print(xinter, yinter)
                     
 
 
@@ -351,13 +366,15 @@ if __name__=="__main__":
                     elif xinter<=0 or yinter<= 0:
                         vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
                         velocidade_saida.publish(vel)
-                    print(ESTADO)
-                    print(xinter, yinter)
+                    #print(ESTADO)
+                    #print(xinter, yinter)
+                if ESTADO == "INICIAL" and no_lines == False and creeper == True:
+                    ESTADO = "BASE"
                 
 
                 if maior_area > 500 and len(media) != 0 and len(central)!=0 and estado_volta == False:
                     ESTADO="ACHOU CREEPER"
-                    print(ESTADO)
+                    #print(ESTADO)
                 
                 if ESTADO == "ACHOU CREEPER":
                     if media[0]>central[0]:
@@ -372,33 +389,54 @@ if __name__=="__main__":
                     ESTADO= "INICIAL" 
                     vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
                     velocidade_saida.publish(vel) 
-                    print(ESTADO)
+                    #print(ESTADO)
                     estado_volta=True
-
-                if ESTADO == "FRENTE1":
-    
-                    print("Retonando a base de ",xondon, ",", yondon,", ", math.degrees(alfa))
-                    print("VOLTANDO PARA A PISTA")
-                    ang = calcula_angulo(alfa, xondon, yondon)
-                    dist = calcula_dist(xondon,yondon)
-                    vel_rot = Twist(Vector3(0,0,0), Vector3(0,0,max_angular))
-                    vel_trans = Twist(Vector3(max_linear,0,0), Vector3(0,0,0))
-                    zero = Twist(Vector3(0,0,0), Vector3(0,0,0))
+                    print("\n============ Press `Enter` to open gripper  ...\n")
+                    raw_input()
+                    creeper = True
                     
 
-                    sleep_rot = abs(ang/max_angular)
-                    sleep_trans = abs(dist/max_linear)
+               
+                if ESTADO == "BASE":
+                    print(str(lista1[2]) == str(objeto))
+                   
+                    if view_base == True or base == True:
+                        if xcross>centro[0]:
+                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,-0.15))
+                            velocidade_saida.publish(vel)
+                            #print("XCROSS")
+            
+                        elif xcross < centro[0]:
+                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0.15))
+                            velocidade_saida.publish(vel)
+                        print("XCROSS")
+                    
+                
+                        base = True
+                        print(ESTADO)
+                        if distancia <= 0.3:
+                            raw_input()
+                            ESTADO = "INICIAL"
+                           
 
-                    print(vel_rot, "\n",  sleep_rot)
-                    velocidade_saida.publish(vel_rot)
-                    rospy.sleep(sleep_rot) # congelou aqui
-                    #rospy.sleep(0.6)
-                    print(vel_trans ,"\n", sleep_trans)
-                    velocidade_saida.publish(vel_trans)
-                    rospy.sleep(sleep_trans) # congelou aqui
-                    #rospy.sleep(0.6)
-                    print("Terminou um ciclo")
-                    velocidade_saida.publish(zero)
+
+                    
+                    else:
+                        if xinter>centro[0]:
+                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,-0.15))
+                            velocidade_saida.publish(vel)
+            
+                        elif xinter<centro[0]:
+                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0.15))
+                            velocidade_saida.publish(vel)
+                        elif xinter<=0 or yinter<= 0:
+                            vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
+                            velocidade_saida.publish(vel)
+                        if no_lines == True:
+                            vel = Twist(Vector3(0,0,0), Vector3(0,0,-0.15))
+                            velocidade_saida.publish(vel)
+
+
                     
                         
 

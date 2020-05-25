@@ -15,6 +15,7 @@ from nav_msgs.msg import Odometry
 from sensor_msgs.msg import Image, CompressedImage
 from cv_bridge import CvBridge, CvBridgeError
 import mobilenet_simples as mnet
+import lista
 
 
 
@@ -36,8 +37,12 @@ def processa(frame):
     return centro, result_frame, result_tuples
 
 
+lista = lista.retorna_lista()
+
+
 
 def identifica_cor(frame):
+    global lista 
     '''
     Segmenta o maior objeto cuja cor é parecida com cor_h (HUE da cor, no espaço HSV).
     '''
@@ -50,16 +55,16 @@ def identifica_cor(frame):
 
 
 
-    lista=("azul", 12, "dog")
+   
 
-    if lista[0]== "azul":
+    if lista[0]== "blue":
         cor_menor = np.array([100,30, 50])
         cor_maior = np.array([110, 255, 255])
     
-    if lista[0]== "rosa":
+    if lista[0]== "pink":
         cor_menor = np.array([145,30, 50])
         cor_maior = np.array([155, 255, 255])
-    if lista[0]== "verde":
+    if lista[0]== "green":
         cor_menor = np.array([55,30, 150])
         cor_maior = np.array([65, 255, 255])
 
