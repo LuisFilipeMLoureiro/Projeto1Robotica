@@ -325,7 +325,7 @@ if __name__=="__main__":
         while not rospy.is_shutdown():
             for r in resultados:
                 objeto = "False"
-                if r[0] == lista1[2]:
+                if r[0] == lista1[2] and ESTADO == "BASE":
                     xcross = (r[2][0]+r[3][0])/2
                     ycross = (r[2][1]+r[3][1])/2
                     view_base = True
@@ -391,31 +391,32 @@ if __name__=="__main__":
                     velocidade_saida.publish(vel) 
                     #print(ESTADO)
                     estado_volta=True
-                    print("\n============ Press `Enter` to open gripper  ...\n")
+                    print("\n============ Press `Enter`  ...\n")
                     raw_input()
                     creeper = True
                     
 
                
                 if ESTADO == "BASE":
-                    print(str(lista1[2]) == str(objeto))
-                   
-                    if view_base == True or base == True:
+                    #print(str(lista1[2]) == str(objeto))
+                    print(view_base)
+                    if view_base == True: #or base == True:
                         if xcross>centro[0]:
-                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,-0.15))
+                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,-0.1))
                             velocidade_saida.publish(vel)
                             #print("XCROSS")
             
                         elif xcross < centro[0]:
-                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0.15))
+                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0.1))
                             velocidade_saida.publish(vel)
                         print("XCROSS")
                     
                 
                         base = True
                         print(ESTADO)
-                        if distancia <= 0.3:
-                            raw_input()
+                        if distancia <= 0.7:
+                            vel = Twist(Vector3(0,0,0), Vector3(0,0,0))
+                            velocidade_saida.publish(vel)
                             ESTADO = "INICIAL"
                            
 
@@ -423,11 +424,11 @@ if __name__=="__main__":
                     
                     else:
                         if xinter>centro[0]:
-                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,-0.15))
+                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,-0.09))
                             velocidade_saida.publish(vel)
             
                         elif xinter<centro[0]:
-                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0.15))
+                            vel = Twist(Vector3(0.1,0,0), Vector3(0,0,0.09))
                             velocidade_saida.publish(vel)
                         elif xinter<=0 or yinter<= 0:
                             vel = Twist(Vector3(0,0,0), Vector3(0,0,0))

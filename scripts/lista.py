@@ -1,3 +1,3 @@
 def retorna_lista():
-    lista=("pink",11, "bicycle")
+    lista=("green",11, "dog")
     return lista
